@@ -248,9 +248,6 @@ func decodeEncodingUJ(instruction uint32) string {
 }
 
 func main() {
-	// - /home/linventif/sae-emulateur/riscv-samples/assembly/test1.bin
-	os.Args = []string{"disas", "/home/linventif/sae-emulateur/riscv-samples/assembly/test2.bin"}
-
 	if len(os.Args) < 2 || os.Args[1] == "-h" {
 		printHelp()
 		os.Exit(0)
