@@ -19,13 +19,32 @@ func printHelp() {
 }
 
 func main() {
+	// todo: remove this insert test option
+	var testFile = []string{
+		// Assembly test files - [0-4]
+		"/home/linventif/sae-emulateur/riscv-samples/assembly/test1.bin",
+		"/home/linventif/sae-emulateur/riscv-samples/assembly/test2.bin",
+		"/home/linventif/sae-emulateur/riscv-samples/assembly/test_fetch_error.bin",
+		"/home/linventif/sae-emulateur/riscv-samples/assembly/zero_bss.bin",
+		"/home/linventif/sae-emulateur/riscv-samples/assembly/semihosting.bin",
+		// C test files - [5-6]
+		"/home/linventif/sae-emulateur/riscv-samples/C/crc/crc.bin",
+		"/home/linventif/sae-emulateur/riscv-samples/C/md5/md5.bin",
+	}
+	var testOption = []string{
+		//"-m", "1024",
+		//"-d", "0",
+		testFile[1],
+	}
+	os.Args = append(os.Args, testOption...)
+	debugMode = true
+
 	// default memory size & default memory value
 	var memorySize uint32 = 512 * 1024
 	var registerDefault uint32 = 0
 	var cpu CPUState
-	var memory []uint32
+	var memory Memory
 	var startAddress uint32 = 0
-	var endAddress uint32 = 0
 
 	// extract options
 	for i, arg := range os.Args {
@@ -62,7 +81,7 @@ func main() {
 	}
 
 	// init memory and cpu state
-	initMemory(&memory, memorySize)
+	initMemory(&memory, memorySize, 0)
 	initCPUState(&cpu, startAddress, registerDefault)
 
 	// read binary file and load instructions into memory
@@ -77,40 +96,40 @@ func main() {
 			fmt.Printf("Error reading file: %v\n", err)
 			os.Exit(1)
 		}
-		if offset < uint32(len(memory)) {
-			memory[offset] = instruction
+
+		if offset < uint32(len(memory.data)) {
+			writeMemory(&memory, offset, instruction)
 			offset++
 		} else {
-			fmt.Printf("Binary file too large for memory, actual size: %d, requested size: %d\n", len(memory), offset)
+			fmt.Printf("Binary file too large for memory, actual size: %d, requested size: %d\n", len(memory.data), offset)
 			os.Exit(1)
 		}
 	}
 
-	// set end address
-	endAddress = offset * 4
-
 	// loop through memory and decode instructions
 	for {
 		// check if pc is out of memory bounds
-		if cpu.pc/4 >= uint32(len(memory)) {
-			break
+		if cpu.pc/4 >= lenMemory(&memory) {
+			fmt.Println("PC out of memory bounds.")
+			os.Exit(1)
 		}
 
-		// check if program is finished
-		if cpu.pc == endAddress {
-			break
+		// handle step mode
+		if stepMode {
+			handleStepMode(&cpu, &memory, startAddress, registerDefault)
 		}
 
 		// decode instruction
-		instruction := memory[cpu.pc/4]
+		instruction := readMemory(&memory, cpu.pc/4)
 		opcode, err := GetOpcodeFromInstruction(instruction)
 
 		if err == nil {
-			rtnString := opcode.Encoding.Decode(instruction, &cpu, &memory)
+			rtnString := opcode.Encoding.Decode(opcode, instruction, &cpu, &memory)
 			logDebug("DISAS", "%s", rtnString)
 		} else {
-			logDebug("DISAS", "%08x: %s\n", cpu.pc, err.Error())
+			//logDebug("DISAS", "%08x: %s\n", cpu.pc, err.Error())
 		}
+
 		cpu.pc += 4
 	}
 }

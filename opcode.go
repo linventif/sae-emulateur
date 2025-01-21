@@ -25,7 +25,7 @@ func GetOpcode(opcode uint32) (Opcode, error) {
 	if op, found := OpcodeMap[opcode]; found {
 		return op, nil
 	}
-	return Opcode{}, fmt.Errorf("opcode %d not found", opcode)
+	return Opcode{}, fmt.Errorf("opcode '%d' not found", opcode)
 }
 
 func GetOpcodeFromInstruction(instruction uint32) (Opcode, error) {
